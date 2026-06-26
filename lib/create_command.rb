@@ -3,14 +3,6 @@
 require_relative "command"
 
 class CreateCommand < Command
-  attr_reader :lecture_room_management_information_repository,
-              :academic_calendar_information_repository,
-              :timetable_information_repository,
-              :reservation_information_repository,
-              :managed_lecture_room_information_repository,
-              :interactive_menu,
-              :term
-
   def initialize(
     lecture_room_management_information_repository,
     academic_calendar_information_repository,
@@ -20,33 +12,43 @@ class CreateCommand < Command
     interactive_menu,
     term
   )
-    validate_class_if_defined(
-      lecture_room_management_information_repository,
-      "LectureRoomManagementInformationRepository",
-      "lecture_room_management_information_repository"
-    )
-    validate_class_if_defined(
-      academic_calendar_information_repository,
-      "AcademicCalendarInformationRepository",
-      "academic_calendar_information_repository"
-    )
-    validate_class_if_defined(
-      timetable_information_repository,
-      "TimetableInformationRepository",
-      "timetable_information_repository"
-    )
-    validate_class_if_defined(
-      reservation_information_repository,
-      "ReservationInformationRepository",
-      "reservation_information_repository"
-    )
-    validate_class_if_defined(
-      managed_lecture_room_information_repository,
-      "ManagedLectureRoomInformationRepository",
-      "managed_lecture_room_information_repository"
-    )
-    validate_class_if_defined(interactive_menu, "InteractiveMenu", "interactive_menu")
-    validate_integer(term, "term", allow_nil: true)
+    if !lecture_room_management_information_repository.nil? &&
+       Object.const_defined?("LectureRoomManagementInformationRepository") &&
+       !lecture_room_management_information_repository.is_a?(Object.const_get("LectureRoomManagementInformationRepository"))
+      raise TypeError, "lecture_room_management_information_repository must be a LectureRoomManagementInformationRepository"
+    end
+
+    if !academic_calendar_information_repository.nil? &&
+       Object.const_defined?("AcademicCalendarInformationRepository") &&
+       !academic_calendar_information_repository.is_a?(Object.const_get("AcademicCalendarInformationRepository"))
+      raise TypeError, "academic_calendar_information_repository must be an AcademicCalendarInformationRepository"
+    end
+
+    if !timetable_information_repository.nil? &&
+       Object.const_defined?("TimetableInformationRepository") &&
+       !timetable_information_repository.is_a?(Object.const_get("TimetableInformationRepository"))
+      raise TypeError, "timetable_information_repository must be a TimetableInformationRepository"
+    end
+
+    if !reservation_information_repository.nil? &&
+       Object.const_defined?("ReservationInformationRepository") &&
+       !reservation_information_repository.is_a?(Object.const_get("ReservationInformationRepository"))
+      raise TypeError, "reservation_information_repository must be a ReservationInformationRepository"
+    end
+
+    if !managed_lecture_room_information_repository.nil? &&
+       Object.const_defined?("ManagedLectureRoomInformationRepository") &&
+       !managed_lecture_room_information_repository.is_a?(Object.const_get("ManagedLectureRoomInformationRepository"))
+      raise TypeError, "managed_lecture_room_information_repository must be a ManagedLectureRoomInformationRepository"
+    end
+
+    if !interactive_menu.nil? &&
+       Object.const_defined?("InteractiveMenu") &&
+       !interactive_menu.is_a?(Object.const_get("InteractiveMenu"))
+      raise TypeError, "interactive_menu must be an InteractiveMenu"
+    end
+
+    raise TypeError, "term must be an Integer" unless term.nil? || term.is_a?(Integer)
 
     @lecture_room_management_information_repository = lecture_room_management_information_repository
     @academic_calendar_information_repository = academic_calendar_information_repository
@@ -58,8 +60,18 @@ class CreateCommand < Command
   end
 
   def execute
-    return dummy_result unless repositories_ready?
-    return dummy_result unless implemented_classes?("LectureRoomManagementInformationFactory", "InteractiveConflictResolutionService")
+    unless @managed_lecture_room_information_repository.respond_to?(:find_all) &&
+           @academic_calendar_information_repository.respond_to?(:find_all) &&
+           @timetable_information_repository.respond_to?(:find_all) &&
+           @reservation_information_repository.respond_to?(:find_all) &&
+           @lecture_room_management_information_repository.respond_to?(:replace_all)
+      return CommandResult.new(false, false, ErrorHandler::ERROR_NOT_IMPLEMENTED)
+    end
+
+    unless Object.const_defined?("LectureRoomManagementInformationFactory") &&
+           Object.const_defined?("InteractiveConflictResolutionService")
+      return CommandResult.new(false, false, ErrorHandler::ERROR_NOT_IMPLEMENTED)
+    end
 
     managed_lecture_room_informations = @managed_lecture_room_information_repository.find_all
     return CommandResult.new(false, false, ErrorHandler::ERROR_MANAGED_LECTURE_ROOM_NOT_LOADED) if managed_lecture_room_informations.empty?
@@ -74,53 +86,32 @@ class CreateCommand < Command
     return CommandResult.new(false, false, ErrorHandler::ERROR_RESERVATION_NOT_LOADED) if reservation_informations.empty?
 
     if @term
-      academic_calendar_informations, timetable_informations, reservation_informations =
-        filter_by_term(academic_calendar_informations, timetable_informations, reservation_informations)
+      term_by_date = academic_calendar_informations.to_h { |information| [information.date, information.term] }
+      academic_calendar_informations = academic_calendar_informations.select { |information| information.term == @term }
+      timetable_informations = timetable_informations.select { |information| information.term == @term }
+      reservation_informations = reservation_informations.select { |information| term_by_date[information.date] == @term }
     end
 
-    factory = LectureRoomManagementInformationFactory.new(academic_calendar_informations, managed_lecture_room_informations)
-    created = factory.create_from_timetable_informations(timetable_informations) +
-              factory.create_from_reservation_informations(reservation_informations)
-    service = InteractiveConflictResolutionService.new(@interactive_menu)
-    resolved = service.execute(created)
-    @lecture_room_management_information_repository.replace_all(resolved)
+    begin
+      factory = LectureRoomManagementInformationFactory.new(academic_calendar_informations, managed_lecture_room_informations)
+      created =
+        factory.create_from_timetable_informations(timetable_informations) +
+        factory.create_from_reservation_informations(reservation_informations)
+      service = InteractiveConflictResolutionService.new(@interactive_menu)
+      resolved = service.execute(created)
+      @lecture_room_management_information_repository.replace_all(resolved)
+    rescue StandardError
+      return CommandResult.new(false, false, ErrorHandler::ERROR_NOT_IMPLEMENTED)
+    end
 
-    conflict_count = conflicts_count(service)
+    conflict_count = service.respond_to?(:conflicts) ? service.conflicts.size : 0
     if conflict_count.positive?
-      puts "#{conflict_count}件の競合を解消しました．"
-      puts "講義室管理情報を作成が完了しました．"
+      puts "#{conflict_count}件の競合を解消しました。"
+      puts "講義室管理情報を作成が完了しました。"
     else
-      puts "講義室管理情報の作成が完了しました．"
+      puts "講義室管理情報の作成が完了しました。"
     end
-    success_result
-  rescue StandardError
-    dummy_result
-  end
 
-  private
-
-  def repositories_ready?
-    [
-      @managed_lecture_room_information_repository,
-      @academic_calendar_information_repository,
-      @timetable_information_repository,
-      @reservation_information_repository
-    ].all? { |repository| repository_ready_for_read?(repository) } &&
-      repository_ready_for_write?(@lecture_room_management_information_repository)
-  end
-
-  def filter_by_term(academic_calendar_informations, timetable_informations, reservation_informations)
-    term_by_date = academic_calendar_informations.to_h { |information| [information.date, information.term] }
-    [
-      academic_calendar_informations.select { |information| information.term == @term },
-      timetable_informations.select { |information| information.term == @term },
-      reservation_informations.select { |information| term_by_date[information.date] == @term }
-    ]
-  end
-
-  def conflicts_count(service)
-    return 0 unless service.respond_to?(:conflicts)
-
-    service.conflicts.size
+    CommandResult.new(false, true, SUCCESS)
   end
 end

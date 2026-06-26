@@ -4,26 +4,12 @@ class CommandResult
   attr_reader :exit_flag, :is_succeed, :error_number
 
   def initialize(exit_flag, is_succeed, error_number)
-    validate_boolean(exit_flag, "exit_flag")
-    validate_boolean(is_succeed, "is_succeed")
-    validate_integer(error_number, "error_number")
+    raise TypeError, "exit_flag must be true or false" unless exit_flag == true || exit_flag == false
+    raise TypeError, "is_succeed must be true or false" unless is_succeed == true || is_succeed == false
+    raise TypeError, "error_number must be an Integer" unless error_number.is_a?(Integer)
 
     @exit_flag = exit_flag
     @is_succeed = is_succeed
     @error_number = error_number
-  end
-
-  private
-
-  def validate_boolean(value, name)
-    return if value == true || value == false
-
-    raise TypeError, "#{name} must be true or false"
-  end
-
-  def validate_integer(value, name)
-    return if value.is_a?(Integer)
-
-    raise TypeError, "#{name} must be an Integer"
   end
 end

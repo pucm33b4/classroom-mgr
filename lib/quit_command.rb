@@ -4,7 +4,7 @@ require_relative "command"
 
 class QuitCommand < Command
   def execute
-    puts "システムが終了しました．"
+    puts "システムを終了しました。"
     CommandResult.new(true, true, SUCCESS)
   end
 end

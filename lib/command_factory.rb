@@ -9,14 +9,6 @@ require_relative "write_command"
 require_relative "quit_command"
 
 class CommandFactory
-  attr_reader :lecture_room_management_information_repository,
-              :academic_calendar_information_repository,
-              :timetable_information_repository,
-              :reservation_information_repository,
-              :managed_lecture_room_information_repository,
-              :interactive_menu,
-              :excel_data_exporter
-
   def initialize(
     lecture_room_management_information_repository = nil,
     academic_calendar_information_repository = nil,
@@ -26,33 +18,47 @@ class CommandFactory
     interactive_menu = nil,
     excel_data_exporter = nil
   )
-    validate_class_if_defined(
-      lecture_room_management_information_repository,
-      "LectureRoomManagementInformationRepository",
-      "lecture_room_management_information_repository"
-    )
-    validate_class_if_defined(
-      academic_calendar_information_repository,
-      "AcademicCalendarInformationRepository",
-      "academic_calendar_information_repository"
-    )
-    validate_class_if_defined(
-      timetable_information_repository,
-      "TimetableInformationRepository",
-      "timetable_information_repository"
-    )
-    validate_class_if_defined(
-      reservation_information_repository,
-      "ReservationInformationRepository",
-      "reservation_information_repository"
-    )
-    validate_class_if_defined(
-      managed_lecture_room_information_repository,
-      "ManagedLectureRoomInformationRepository",
-      "managed_lecture_room_information_repository"
-    )
-    validate_class_if_defined(interactive_menu, "InteractiveMenu", "interactive_menu")
-    validate_class_if_defined(excel_data_exporter, "ExcelDataExporter", "excel_data_exporter")
+    if !lecture_room_management_information_repository.nil? &&
+       Object.const_defined?("LectureRoomManagementInformationRepository") &&
+       !lecture_room_management_information_repository.is_a?(Object.const_get("LectureRoomManagementInformationRepository"))
+      raise TypeError, "lecture_room_management_information_repository must be a LectureRoomManagementInformationRepository"
+    end
+
+    if !academic_calendar_information_repository.nil? &&
+       Object.const_defined?("AcademicCalendarInformationRepository") &&
+       !academic_calendar_information_repository.is_a?(Object.const_get("AcademicCalendarInformationRepository"))
+      raise TypeError, "academic_calendar_information_repository must be an AcademicCalendarInformationRepository"
+    end
+
+    if !timetable_information_repository.nil? &&
+       Object.const_defined?("TimetableInformationRepository") &&
+       !timetable_information_repository.is_a?(Object.const_get("TimetableInformationRepository"))
+      raise TypeError, "timetable_information_repository must be a TimetableInformationRepository"
+    end
+
+    if !reservation_information_repository.nil? &&
+       Object.const_defined?("ReservationInformationRepository") &&
+       !reservation_information_repository.is_a?(Object.const_get("ReservationInformationRepository"))
+      raise TypeError, "reservation_information_repository must be a ReservationInformationRepository"
+    end
+
+    if !managed_lecture_room_information_repository.nil? &&
+       Object.const_defined?("ManagedLectureRoomInformationRepository") &&
+       !managed_lecture_room_information_repository.is_a?(Object.const_get("ManagedLectureRoomInformationRepository"))
+      raise TypeError, "managed_lecture_room_information_repository must be a ManagedLectureRoomInformationRepository"
+    end
+
+    if !interactive_menu.nil? &&
+       Object.const_defined?("InteractiveMenu") &&
+       !interactive_menu.is_a?(Object.const_get("InteractiveMenu"))
+      raise TypeError, "interactive_menu must be an InteractiveMenu"
+    end
+
+    if !excel_data_exporter.nil? &&
+       Object.const_defined?("ExcelDataExporter") &&
+       !excel_data_exporter.is_a?(Object.const_get("ExcelDataExporter"))
+      raise TypeError, "excel_data_exporter must be an ExcelDataExporter"
+    end
 
     @lecture_room_management_information_repository = lecture_room_management_information_repository
     @academic_calendar_information_repository = academic_calendar_information_repository
@@ -64,9 +70,18 @@ class CommandFactory
   end
 
   def create(command_name, arguments = [], options = {})
-    validate_string(command_name, "command_name")
-    validate_array(arguments, "arguments")
-    validate_hash(options, "options")
+    raise TypeError, "command_name must be a String" unless command_name.is_a?(String)
+    raise TypeError, "arguments must be an Array" unless arguments.is_a?(Array)
+    raise TypeError, "options must be a Hash" unless options.is_a?(Hash)
+
+    term = options[:term] || options["term"]
+    begin
+      term = Integer(term) unless term.nil?
+    rescue ArgumentError, TypeError
+      term = nil
+    end
+    finding_date = options[:finding_date] || options["finding_date"] || options[:date] || options["date"]
+    finding_subject = options[:finding_subject] || options["finding_subject"] || options[:subject] || options["subject"]
 
     case command_name.downcase
     when "read"
@@ -86,13 +101,13 @@ class CommandFactory
         @reservation_information_repository,
         @managed_lecture_room_information_repository,
         @interactive_menu,
-        integer_option(options, :term)
+        term
       )
     when "print"
       PrintCommand.new(
         @lecture_room_management_information_repository,
-        string_option(options, :finding_date, :date),
-        string_option(options, :finding_subject, :subject)
+        finding_date&.to_s,
+        finding_subject&.to_s
       )
     when "write"
       WriteCommand.new(
@@ -106,62 +121,5 @@ class CommandFactory
     else
       nil
     end
-  end
-
-  private
-
-  def validate_string(value, name)
-    return if value.is_a?(String)
-
-    raise TypeError, "#{name} must be a String"
-  end
-
-  def validate_array(value, name)
-    return if value.is_a?(Array)
-
-    raise TypeError, "#{name} must be an Array"
-  end
-
-  def validate_hash(value, name)
-    return if value.is_a?(Hash)
-
-    raise TypeError, "#{name} must be a Hash"
-  end
-
-  def validate_class_if_defined(value, class_name, name, allow_nil: true)
-    return if allow_nil && value.nil?
-
-    klass = Object.const_get(class_name)
-    return if value.is_a?(klass)
-
-    raise TypeError, "#{name} must be a #{class_name}"
-  rescue NameError
-    nil
-  end
-
-  def string_option(options, *names)
-    names.each do |name|
-      value = option_value(options, name)
-      return value.to_s unless value.nil?
-    end
-
-    nil
-  end
-
-  def integer_option(options, name)
-    value = option_value(options, name)
-    integer_argument(value)
-  end
-
-  def option_value(options, name)
-    options[name] || options[name.to_s]
-  end
-
-  def integer_argument(value)
-    return nil if value.nil?
-
-    Integer(value)
-  rescue ArgumentError, TypeError
-    nil
   end
 end
