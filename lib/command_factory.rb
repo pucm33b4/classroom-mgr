@@ -18,6 +18,8 @@ class CommandFactory
     interactive_menu = nil,
     excel_data_exporter = nil
   )
+    # 他担当のクラスが読み込まれている場合だけ型を確認する。
+    # 未実装の依存先がある段階でも，コマンド系単体で動作確認できるようにしている。
     if !lecture_room_management_information_repository.nil? &&
        Object.const_defined?("LectureRoomManagementInformationRepository") &&
        !lecture_room_management_information_repository.is_a?(Object.const_get("LectureRoomManagementInformationRepository"))
@@ -60,6 +62,7 @@ class CommandFactory
       raise TypeError, "excel_data_exporter must be an ExcelDataExporter"
     end
 
+    # 各コマンド生成時に渡す共有オブジェクトを保持する。
     @lecture_room_management_information_repository = lecture_room_management_information_repository
     @academic_calendar_information_repository = academic_calendar_information_repository
     @timetable_information_repository = timetable_information_repository
@@ -70,10 +73,12 @@ class CommandFactory
   end
 
   def create(command_name, arguments = [], options = {})
+    # コマンド名・引数・オプションは，ここで基本的な型だけ確認する。
     raise TypeError, "command_name must be a String" unless command_name.is_a?(String)
     raise TypeError, "arguments must be an Array" unless arguments.is_a?(Array)
     raise TypeError, "options must be a Hash" unless options.is_a?(Hash)
 
+    # create -t の学期指定は整数として扱う。変換できない値は指定なしとして扱う。
     term = options[:term] || options["term"]
     begin
       term = Integer(term) unless term.nil?
@@ -83,6 +88,7 @@ class CommandFactory
     finding_date = options[:finding_date] || options["finding_date"] || options[:date] || options["date"]
     finding_subject = options[:finding_subject] || options["finding_subject"] || options[:subject] || options["subject"]
 
+    # 入力されたコマンド名に応じて，対応するコマンドオブジェクトを生成する。
     case command_name.downcase
     when "read"
       ReadCommand.new(

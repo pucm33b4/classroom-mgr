@@ -22,6 +22,7 @@ class ErrorHandler
   ERROR_NOT_IMPLEMENTED = 900
   ERROR_COMMAND_NOT_IMPLEMENTED = 901
 
+  # コマンド処理が返すエラー番号と，画面に表示するエラーメッセージを対応づける。
   NUMBER_TO_ERROR_SENTENCE = {
     ERROR_UNKNOWN_COMMAND => "エラー: 無効なコマンドです。\nマニュアルを参照し，有効なコマンドを入力してください。",
     ERROR_ACADEMIC_CALENDAR_FILE_NOT_FOUND => "エラー: 学年暦データが見つかりません。\n学年暦データを指定されたディレクトリに配置してください。",
@@ -46,6 +47,7 @@ class ErrorHandler
   }.freeze
 
   def self.print_error(error_number)
+    # エラー番号からメッセージを取り出し，利用者に表示する。
     raise TypeError, "error_number must be an Integer" unless error_number.is_a?(Integer)
 
     error_sentence = find_error(error_number)
@@ -55,6 +57,7 @@ class ErrorHandler
   end
 
   def self.find_error(error_number)
+    # エラー番号に対応するメッセージだけを返す。表示は呼び出し元に任せる。
     raise TypeError, "error_number must be an Integer" unless error_number.is_a?(Integer)
 
     NUMBER_TO_ERROR_SENTENCE[error_number]
