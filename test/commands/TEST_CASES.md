@@ -8,6 +8,10 @@
 - Missing workbook returns the managed lecture room file-not-found error
 - Multiple workbooks return the managed lecture room parse error
 - Empty parser output returns the managed lecture room parse error
+- A room name outside the allowed list returns the managed lecture room parse error
+- Equivalent abbreviated and full room names are accepted
+- Full-width letters and numbers are accepted during validation
+- The room names written in the XLSX are preserved in the repository
 - Selecting `yes` replaces all repository entries and returns success
 - Selecting `no` leaves the repository unchanged and returns the not-selected error
 

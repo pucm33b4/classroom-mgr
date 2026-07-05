@@ -7,6 +7,44 @@ require_relative "managed_lecture_room_information_repository"
 require_relative "managed_lecture_room_parser"
 
 class SelectCommand < Command
+  VALID_LECTURE_ROOM_NAMES = [
+    "1講",
+    "第1講義室",
+    "2講",
+    "第2講義室",
+    "4講",
+    "第4講義室",
+    "5講",
+    "第5講義室",
+    "10講",
+    "第10講義室",
+    "11講",
+    "第11講義室",
+    "14講",
+    "第14講義室",
+    "15講",
+    "第15講義室",
+    "17講",
+    "第17講義室",
+    "プログラミング演習室1",
+    "プログラミング演習室2",
+    "環104",
+    "環104室",
+    "自然大",
+    "環101",
+    "環101室",
+    "303",
+    "303室",
+    "103",
+    "103室",
+    "一般B41",
+    "一般B41室",
+    "一般B33",
+    "一般B33室",
+    "コモンズ",
+    "工大"
+  ].freeze
+
   def initialize(managed_lecture_room_information_repository, interactive_menu)
     unless managed_lecture_room_information_repository.is_a?(ManagedLectureRoomInformationRepository)
       raise TypeError,
@@ -42,7 +80,12 @@ class SelectCommand < Command
     worksheet = workbook[0]
     parser = ManagedLectureRoomParser.new(worksheet)
     managed_lecture_room_informations = parser.parse_managed_lecture_room_worksheet
-    if managed_lecture_room_informations.empty?
+    contains_invalid_name = managed_lecture_room_informations.any? do |information|
+      normalized_room_name = information.room_name.unicode_normalize(:nfkc)
+      !VALID_LECTURE_ROOM_NAMES.include?(normalized_room_name)
+    end
+
+    if managed_lecture_room_informations.empty? || contains_invalid_name
       return CommandResult.new(
         false,
         false,

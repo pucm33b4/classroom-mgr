@@ -14,7 +14,7 @@ begin
     created_file_path = File.join(directory_path, "select_command_manual_check.xlsx")
     workbook = RubyXL::Workbook.new
     worksheet = workbook[0]
-    worksheet.add_cell(0, 0, "第10講義室")
+    worksheet.add_cell(0, 0, "10講")
     worksheet.add_cell(1, 0, "第11講義室")
     worksheet.add_cell(2, 0, "303室")
     workbook.write(created_file_path)
